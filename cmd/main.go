@@ -33,7 +33,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
+
 	//+kubebuilder:scaffold:imports
+
+	"github.com/ibengal/k8s_controller/internal/controller"
 )
 
 var (
@@ -90,7 +93,7 @@ func main() {
 		TLSOpts: tlsOpts,
 	})
 
-	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
+	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{ /////////// here the manager knows what is the correct cluster and the credentials to it (taken from env var or a file changd by oc and crc)
 		Scheme: scheme,
 		Metrics: metricsserver.Options{
 			BindAddress:   metricsAddr,
@@ -118,7 +121,17 @@ func main() {
 		os.Exit(1)
 	}
 
+	////////////////
+
 	//+kubebuilder:scaffold:builder
+	if err := (&controller.PodTTLReconciler{
+		Client: mgr.GetClient(),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "PodTTL")
+		os.Exit(1)
+	}
+
+	////////////////
 
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
 		setupLog.Error(err, "unable to set up health check")
