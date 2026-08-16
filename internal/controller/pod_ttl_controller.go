@@ -20,12 +20,8 @@ type PodTTLReconciler struct {
 
 func (r *PodTTLReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 
-	///////////
-	log.FromContext(ctx).Info("reconciling pod", "request", req)
-	///////////
-
 	var pod corev1.Pod
-	if err := r.Client.Get(ctx, req.NamespacedName, &pod); err != nil {
+	if err := r.Client.Get(ctx, req.NamespacedName, &pod); err != nil { // why client and not ctrl isnt it in the informer already?
 
 		if apierrors.IsNotFound(err) {
 			return ctrl.Result{}, nil
@@ -35,10 +31,6 @@ func (r *PodTTLReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		return ctrl.Result{}, err
 	}
 
-	///////////
-	log.FromContext(ctx).Info("pod found", "pod", pod.Name)
-	///////////
-
 	annotations := pod.GetAnnotations()
 
 	ttlValue, exists := annotations["ttl"]
@@ -46,9 +38,6 @@ func (r *PodTTLReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	if !exists {
 		return ctrl.Result{}, nil
 	}
-
-	////////////
-	log.FromContext(ctx).Info("ttl value", "ttlValue", ttlValue)
 
 	ttlValueParsed, err := time.ParseDuration(ttlValue)
 	if err != nil {
@@ -62,12 +51,15 @@ func (r *PodTTLReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	expiry := creationTime.Add(ttlValueParsed)
 	difference := expiry.Sub(currentTimestamp)
 
-	//if !currentTimestamp.Before(expiry) {
 	if difference <= 0 {
 		// delete the pod
 
-		/////////////
-		log.FromContext(ctx).Info("deleting pod!!!!!!", "pod", pod.Name)
+		if err := r.Client.Delete(ctx, &pod); err != nil {
+			log.FromContext(ctx).Error(err, "failed to delete pod")
+			return ctrl.Result{}, err
+		}
+
+		return ctrl.Result{}, nil
 	}
 
 	// requeue for later
