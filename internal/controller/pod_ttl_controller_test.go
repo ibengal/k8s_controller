@@ -152,3 +152,32 @@ func TestPodTTLController(t *testing.T) {
 		})
 	}
 }
+
+func TestPodTTLReconciler_Reconcile_PodNotFound(t *testing.T) {
+	scheme := runtime.NewScheme()
+	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
+
+	// Empty store: no pods — Get will return NotFound.
+	client := fake.NewClientBuilder().WithScheme(scheme).Build()
+	reconciler := &PodTTLReconciler{Client: client}
+
+	req := ctrl.Request{
+		NamespacedName: types.NamespacedName{
+			Namespace: "default",
+			Name:      "ghost",
+		},
+	}
+
+	result, err := reconciler.Reconcile(context.Background(), req)
+	if err != nil {
+		t.Fatalf("expected nil error when pod is not found, got %v", err)
+	}
+
+	if result.RequeueAfter != 0 {
+		t.Errorf("expected no requeue, got RequeueAfter=%v", result.RequeueAfter)
+	}
+
+	if result.Requeue {
+		t.Errorf("expected Requeue=false, got Requeue=true")
+	}
+}

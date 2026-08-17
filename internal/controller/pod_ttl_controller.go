@@ -1,3 +1,6 @@
+// Package controller implements the Pod TTL reconciler.
+//
+// +kubebuilder:rbac:groups=core,resources=pods,verbs=get;list;watch;delete
 package controller
 
 import (
@@ -42,7 +45,7 @@ func (r *PodTTLReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	ttlValueParsed, err := time.ParseDuration(ttlValue)
 	if err != nil {
 		log.FromContext(ctx).Error(err, "failed to parse ttl duration")
-		return ctrl.Result{}, nil // why do we return nil and not err here?
+		return ctrl.Result{}, nil // why do we return nil and not err here? 
 	}
 
 	currentTimestamp := time.Now()
